@@ -1,3 +1,11 @@
+//======================Code References / Inspirations ==================
+https://www.youtube.com/watch?v=Rfko5UnqDI4&ab_channel=AdafruitIndustries
+https://www.teachengineering.org/makerchallenges/view/rice3-2349-heartbeat-microcontroller-led-senor-design-challenge
+https://learn.adafruit.com/heart-rate-badge/program-it
+https://forum.arduino.cc/index.php?topic=314521.0
+https://www.xtronical.com/pulseheartsensor/
+https://learn.adafruit.com/heart-rate-badge/program-it
+//=======================================================================
 #include <Adafruit_CircuitPlayground.h>
 
 
