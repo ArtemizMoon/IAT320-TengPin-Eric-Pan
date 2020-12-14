@@ -1,37 +1,63 @@
-/* =====================Audio Reference=======================
-https://www.soundboard.com/sb/sound/930977 = Hum2:        Stable saber sound
-https://www.soundboard.com/sb/sound/930980 = lasrhit1:    Activate saber sound
-https://www.soundboard.com/sb/sound/931006 = Swing01:     Swinging sfx #1
-https://www.soundboard.com/sb/sound/931007 = Swing02:     Swinging sfx #2
-============================================================*/
-
 
 #include <Adafruit_CircuitPlayground.h>
 
-
+bool power = false;
 bool turnOn = false; //on/off switch for the blade
 bool touchAgain = false; // stops touch sensor from reacting consistantly while sensor is touched
 float touchHold = 0;
-float threshHold = 200;
+float threshHold = 30;
 
 int LEDPin = 9;
 float brightness;//brightness value
-float lightMax = 255, lightMin = 25.5; //range of brightness dims and brightens
+float lightMax = 255, lightMin = 51; //25.5; //range of brightness dims and brightens
 bool isItDimming;
+int sound = 250;
+int soundDuration = 10;
+int randomSFX = 0;
 
 float movement; //the amount of movement
-float movementLimit = 17;//the threshhold of the movement to differentiate between dramatic movements and normal movements.
+float movementLimit = 18;//the threshhold of the movement to differentiate between dramatic movements and normal movements.
+
+
+
+
+
+
+//===============testing===============
+bool test = false;
+//=====================================
+
 
 void setup() 
 {
  Serial.begin(9600);
  CircuitPlayground.begin();
- CircuitPlayground.setBrightness(100);
+ CircuitPlayground.setBrightness(5);
  
 }
 
 void loop() 
 {
+
+  if ((CircuitPlayground.rightButton()))
+  {
+    if (test == false)
+    {
+      swingBladeSFX();
+    test = true;
+    }
+
+  }
+    if ((CircuitPlayground.rightButton()))
+  {
+    if (test == true)
+    {
+      test = false;
+    }
+    
+  }
+
+  
   powerOn();
   lightsOnOff();
   soundVisualFeedback();
@@ -40,10 +66,16 @@ void loop()
 
 void powerOn()
 {
-  for (int k=0; k<10; k++) 
+  if (power == false)
   {
-    CircuitPlayground.setPixelColor(k, 0, 255, 0);
+   CircuitPlayground.playTone(800,300);
+   CircuitPlayground.playTone(800,300);
+   power = true;
   }
+
+
+  
+
 }
 
 //Interatcion #1
@@ -64,6 +96,10 @@ void lightsOnOff()
     brightness = 255;
     //Serial.println("check point 1");    
     analogWrite(LEDPin, brightness);
+    for (int k=0; k<10; k++) 
+    {
+      CircuitPlayground.setPixelColor(k, 0, 255, 0);
+    }
     activateBladeSFX();
     delay(10);
    }
@@ -74,6 +110,10 @@ void lightsOnOff()
     brightness = 0;
     //Serial.println("check point 2");
     analogWrite(LEDPin, brightness);
+    for (int k=0; k<10; k++) 
+    {
+      CircuitPlayground.setPixelColor(k, 0, 0, 0);
+    }    
     deactivateBladeSFX();
     
     delay(10);
@@ -97,19 +137,11 @@ void soundVisualFeedback()
   {
     //Serial.println("check point 4");
     //Serial.println(brightness);
-
+   lightsOnOff();
     movement = abs(CircuitPlayground.motionX()) + abs(CircuitPlayground.motionY()) + abs(CircuitPlayground.motionZ());
-    Serial.println(movement);
-    if (movement > movementLimit) //the blade is moving drastically
-    {
-      CircuitPlayground.playTone(1000,100);
-      brightness = lightMax;
-      analogWrite(LEDPin, brightness);
-      swingBladeSFX();
-      
-    }
-    else //the balde is relatively stable and not moving as much
-    {
+   // Serial.println(movement);
+
+    //the balde is relatively stable and not moving as much
       if (brightness == lightMax)//if brightness is at max
       {
         isItDimming = true; //start dimming
@@ -120,30 +152,42 @@ void soundVisualFeedback()
         isItDimming = false; //start brighten
         //Serial.println("check point 6");
       }
-      
-      if (isItDimming == true)//if it needs to start dimming
+      lightsOnOff();
+      stableBladeSFX2();
+      if (isItDimming == false)//if it needs to start brighten
       {
-        stableBladeSFX();
-        for (brightness; brightness > lightMin; brightness -=25.5)//start dimming until at min 
-        {
-          analogWrite(LEDPin, brightness);
-          delay(50);
-        }
-        isItDimming = false;
-        //Serial.println("check point 7");
-      }
-      else if (isItDimming == false)//if it needs to start brighten
-      {
-        stableBladeSFX();
         for (brightness; brightness < lightMax; brightness +=25.5)//start brighten until at max
         {
           analogWrite(LEDPin, brightness);
+          //CircuitPlayground.playTone(sound,50);
+          //sound += 100;
           delay(50);
-        }    
+        }
+        analogWrite(LEDPin, brightness);
+        
+        delay(100);
+           
         isItDimming = true;
         //Serial.println("check point 8");
       }
-    }
+      lightsOnOff();
+      stableBladeSFX1();
+      if (isItDimming == true)//if it needs to start dimming
+      { 
+        for (brightness; brightness > lightMin; brightness -=25.5)//start dimming until at min 
+        {
+          analogWrite(LEDPin, brightness);
+
+          sound -= 100;
+          delay(50);
+          
+        }
+ 
+        isItDimming = false;
+        //Serial.println("check point 7");
+      }
+      lightsOnOff();
+    
     
   }
 
@@ -151,23 +195,244 @@ void soundVisualFeedback()
 
 
 
+void bladeMovement()
+{
+    if (movement > movementLimit) //the blade is moving drastically
+    {
+      //CircuitPlayground.playTone(1000,100);
+      brightness = lightMax;
+      analogWrite(LEDPin, brightness);
+      swingBladeSFX();
+      
+    }
+}
+
+
+
+//======Alternate solution to technical difficulites of playing wav sound files on Circuitplayground through Arduino.============
+//Utilizing the playTone function to create variation of SFX to differentiate between different states of the project.===========
 void activateBladeSFX()
 {
-  CircuitPlayground.playTone(1000,100);
+    CircuitPlayground.playTone(850,10);
+    CircuitPlayground.playTone(850,10);
+    CircuitPlayground.playTone(900,10);
+    CircuitPlayground.playTone(900,10);
+    CircuitPlayground.playTone(990,10);
+    CircuitPlayground.playTone(990,10);
+    CircuitPlayground.playTone(990,10);
+    CircuitPlayground.playTone(990,10);
+    CircuitPlayground.playTone(990,10);
+    CircuitPlayground.playTone(990,10);
+    CircuitPlayground.playTone(1090,10);
+    CircuitPlayground.playTone(1090,10);
+    CircuitPlayground.playTone(1090,10);
+    CircuitPlayground.playTone(1090,10);
+    CircuitPlayground.playTone(1200,10);
+    CircuitPlayground.playTone(1200,10);
+    CircuitPlayground.playTone(1200,10);
+    CircuitPlayground.playTone(1300,10);
+    CircuitPlayground.playTone(1300,10);
+    CircuitPlayground.playTone(1300,10);
 }
 
 
 void deactivateBladeSFX()
 {
-  CircuitPlayground.playTone(100,100);
+    CircuitPlayground.playTone(1300,10);
+    CircuitPlayground.playTone(1300,10);
+    CircuitPlayground.playTone(1300,10);
+    CircuitPlayground.playTone(1200,10);
+    CircuitPlayground.playTone(1200,10);
+    CircuitPlayground.playTone(1200,10);
+    CircuitPlayground.playTone(1090,10);
+    CircuitPlayground.playTone(1090,10);
+    CircuitPlayground.playTone(1090,10);
+    CircuitPlayground.playTone(1090,10);
+    CircuitPlayground.playTone(990,10);
+    CircuitPlayground.playTone(990,10);
+    CircuitPlayground.playTone(990,10);
+    CircuitPlayground.playTone(990,10);
+    CircuitPlayground.playTone(990,10);
+    CircuitPlayground.playTone(990,10);
+    CircuitPlayground.playTone(900,10);
+    CircuitPlayground.playTone(900,10);
+    CircuitPlayground.playTone(850,10);
+    CircuitPlayground.playTone(850,10);
+    
 }
 
-void stableBladeSFX()
+void stableBladeSFX1()
 {
-  CircuitPlayground.playTone(300,100);
+
+    CircuitPlayground.playTone(450,soundDuration);
+    CircuitPlayground.playTone(450,soundDuration);
+    CircuitPlayground.playTone(450,soundDuration);
+    bladeMovement();
+    CircuitPlayground.playTone(450,soundDuration);
+    CircuitPlayground.playTone(450,soundDuration);
+    CircuitPlayground.playTone(450,soundDuration);
+    bladeMovement();
+    CircuitPlayground.playTone(450,soundDuration);
+    CircuitPlayground.playTone(450,soundDuration);
+    CircuitPlayground.playTone(460,soundDuration);
+    bladeMovement();
+    CircuitPlayground.playTone(460,soundDuration);
+    CircuitPlayground.playTone(460,soundDuration);
+    CircuitPlayground.playTone(460,soundDuration);
+    CircuitPlayground.playTone(460,soundDuration);
+    bladeMovement();
+    CircuitPlayground.playTone(460,soundDuration);
+    CircuitPlayground.playTone(470,soundDuration);
+    CircuitPlayground.playTone(470,soundDuration);
+    CircuitPlayground.playTone(470,soundDuration);
+    bladeMovement();
+    CircuitPlayground.playTone(470,soundDuration);
+    CircuitPlayground.playTone(470,soundDuration);
+    CircuitPlayground.playTone(470,soundDuration);
+    CircuitPlayground.playTone(480,soundDuration);
+    bladeMovement();
+    CircuitPlayground.playTone(480,soundDuration);
+    CircuitPlayground.playTone(480,soundDuration);
+    CircuitPlayground.playTone(480,soundDuration);
+    bladeMovement();
+    CircuitPlayground.playTone(500,soundDuration);
+    CircuitPlayground.playTone(500,soundDuration);
+    CircuitPlayground.playTone(500,soundDuration);
+    CircuitPlayground.playTone(500,soundDuration);
+    bladeMovement();
+    CircuitPlayground.playTone(550,soundDuration);
+    CircuitPlayground.playTone(550,soundDuration);
+    CircuitPlayground.playTone(550,soundDuration);
+    CircuitPlayground.playTone(550,soundDuration);
+    bladeMovement();
+ 
+}
+void stableBladeSFX2()
+{
+    CircuitPlayground.playTone(550,soundDuration);
+    CircuitPlayground.playTone(550,soundDuration);
+    CircuitPlayground.playTone(550,soundDuration);
+    bladeMovement();
+    CircuitPlayground.playTone(550,soundDuration);
+    CircuitPlayground.playTone(500,soundDuration);
+    CircuitPlayground.playTone(500,soundDuration);
+    CircuitPlayground.playTone(500,soundDuration);
+    bladeMovement();
+    CircuitPlayground.playTone(500,soundDuration);
+    CircuitPlayground.playTone(480,soundDuration);
+    CircuitPlayground.playTone(480,soundDuration);
+    CircuitPlayground.playTone(480,soundDuration);
+    bladeMovement();
+    CircuitPlayground.playTone(480,soundDuration);
+    CircuitPlayground.playTone(470,soundDuration);
+    CircuitPlayground.playTone(470,soundDuration);
+    bladeMovement();
+    CircuitPlayground.playTone(470,soundDuration);
+    CircuitPlayground.playTone(470,soundDuration);
+    CircuitPlayground.playTone(470,soundDuration);
+    bladeMovement();
+    CircuitPlayground.playTone(470,soundDuration);
+    CircuitPlayground.playTone(460,soundDuration);
+    CircuitPlayground.playTone(460,soundDuration);
+    bladeMovement();
+    CircuitPlayground.playTone(460,soundDuration);
+    CircuitPlayground.playTone(460,soundDuration);
+    CircuitPlayground.playTone(460,soundDuration);
+    bladeMovement();
+    CircuitPlayground.playTone(460,soundDuration);
+    CircuitPlayground.playTone(450,soundDuration);
+    CircuitPlayground.playTone(450,soundDuration);
+    bladeMovement();
+    CircuitPlayground.playTone(450,soundDuration);
+    CircuitPlayground.playTone(450,soundDuration);
+    CircuitPlayground.playTone(450,soundDuration);
+    bladeMovement();
+    CircuitPlayground.playTone(450,soundDuration);
+    CircuitPlayground.playTone(450,soundDuration);
+    CircuitPlayground.playTone(450,soundDuration);
+    bladeMovement();
 }
 
 void swingBladeSFX()
 {
-  CircuitPlayground.playTone(800,100);
+    randomSFX = random(1,3);
+    switch(randomSFX) //randomly plays 3 variations of swing SFX
+    {
+      case 1:
+        CircuitPlayground.playTone(1800,10);
+        CircuitPlayground.playTone(1800,10);
+        CircuitPlayground.playTone(1700,10);
+        CircuitPlayground.playTone(1700,10);
+        CircuitPlayground.playTone(1600,9);
+        CircuitPlayground.playTone(1600,9);
+        CircuitPlayground.playTone(1600,9);
+        CircuitPlayground.playTone(1500,8);
+        CircuitPlayground.playTone(1500,8);
+        CircuitPlayground.playTone(1500,8);
+        CircuitPlayground.playTone(1500,8);
+        CircuitPlayground.playTone(1400,9);
+        CircuitPlayground.playTone(1400,9);
+        CircuitPlayground.playTone(1400,9);
+        CircuitPlayground.playTone(1300,10);
+        CircuitPlayground.playTone(1200,10);
+        CircuitPlayground.playTone(1100,10);
+        CircuitPlayground.playTone(1000,10);
+        CircuitPlayground.playTone(900,10);
+        CircuitPlayground.playTone(800,10);
+        CircuitPlayground.playTone(700,10);    
+        soundVisualFeedback();  
+        break;
+        
+      case 2:
+        CircuitPlayground.playTone(70,10);
+        CircuitPlayground.playTone(80,10);
+        CircuitPlayground.playTone(90,10);
+        CircuitPlayground.playTone(100,10);
+        CircuitPlayground.playTone(100,10);
+        CircuitPlayground.playTone(200,10);
+        CircuitPlayground.playTone(300,10);
+        CircuitPlayground.playTone(400,9);
+        CircuitPlayground.playTone(400,9);
+        CircuitPlayground.playTone(400,9);
+        CircuitPlayground.playTone(500,8);
+        CircuitPlayground.playTone(500,8);
+        CircuitPlayground.playTone(500,8);
+        CircuitPlayground.playTone(500,8);  
+        CircuitPlayground.playTone(600,9);
+        CircuitPlayground.playTone(600,9);
+        CircuitPlayground.playTone(600,9);
+        CircuitPlayground.playTone(700,10);
+        CircuitPlayground.playTone(700,10);        
+        CircuitPlayground.playTone(800,10);
+        CircuitPlayground.playTone(800,10);
+        soundVisualFeedback();        
+        break;
+        
+      case 3:
+        CircuitPlayground.playTone(1400,10);
+        CircuitPlayground.playTone(1400,10);
+        CircuitPlayground.playTone(1100,10);
+        CircuitPlayground.playTone(1100,10);
+        CircuitPlayground.playTone(1400,9);
+        CircuitPlayground.playTone(1400,9);
+        CircuitPlayground.playTone(1300,9);
+        CircuitPlayground.playTone(1400,8);
+        CircuitPlayground.playTone(1400,8);
+        CircuitPlayground.playTone(1400,8);
+        CircuitPlayground.playTone(1100,8);
+        CircuitPlayground.playTone(1400,9);
+        CircuitPlayground.playTone(1400,9);
+        CircuitPlayground.playTone(1100,9);
+        CircuitPlayground.playTone(1300,10);
+        CircuitPlayground.playTone(1100,10);
+        CircuitPlayground.playTone(1100,10);
+        CircuitPlayground.playTone(1400,10);
+        CircuitPlayground.playTone(1400,10);
+        CircuitPlayground.playTone(1400,10);
+        CircuitPlayground.playTone(1400,10);
+        soundVisualFeedback();     
+        break;      
+    }
+  
+
 }
